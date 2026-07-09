@@ -1,0 +1,13 @@
+# Secrets and environment variables
+.env
+
+# Raw and processed user data
+raw/
+wiki/
+data/
+
+# Python caching and virtual environments
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
