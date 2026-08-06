@@ -22,22 +22,37 @@ if not GROQ_API_KEY and not is_testing:
     print("Error: GROQ_API_KEY not set. Copy .env.example to .env and add your key.", file=sys.stderr)
     sys.exit(1)
 
+# Demo mode config
+USE_DEMO_DATA = os.getenv("USE_DEMO_DATA", "false").lower() == "true"
+
 # Path Configurations (absolute paths using pathlib)
-RAW_DIR = BASE_DIR / "raw"
-RAW_FILES_DIR = RAW_DIR / "files"
-WIKI_DIR = BASE_DIR / "wiki"
-DATA_DIR = BASE_DIR / "data"
-GRAPH_PATH = BASE_DIR / "graph.json"
+if USE_DEMO_DATA:
+    DEMO_DIR = BASE_DIR / "demo"
+    RAW_DIR = DEMO_DIR / "raw"
+    RAW_FILES_DIR = RAW_DIR / "files"
+    WIKI_DIR = DEMO_DIR / "wiki"
+    DATA_DIR = DEMO_DIR / "data"
+    GRAPH_PATH = DEMO_DIR / "graph.json"
+else:
+    RAW_DIR = BASE_DIR / "raw"
+    RAW_FILES_DIR = RAW_DIR / "files"
+    WIKI_DIR = BASE_DIR / "wiki"
+    DATA_DIR = BASE_DIR / "data"
+    GRAPH_PATH = BASE_DIR / "graph.json"
 
 # Threshold and Config Constants
 SIMILARITY_THRESHOLD = 0.75
 MAX_LINKS_PER_NOTE = 5
 TOP_K = 5
+MIN_RETRIEVAL_SCORE = 0.3
 MAX_FILE_SIZE_MB = 50
 MAX_CAPTURE_LENGTH = 500000
 
-# Demo mode config
-USE_DEMO_DATA = os.getenv("USE_DEMO_DATA", "false").lower() == "true"
+# Groq / LLM settings
+GROQ_MODEL = "llama-3.1-8b-instant"  # fast 128K-context model (replaces llama3-8b-8192)
+MAX_CLASSIFY_CHARS = 8000        # truncate content sent to LLM (CLS-07)
+MAX_TAGS = 10                    # cap tags from LLM (CLS-08)
+MIN_CONTENT_LENGTH = 50          # min characters in note body to embed/link (LNK-06)
 
 def ensure_dirs():
     """Ensure all required directories exist (SETUP-02)."""

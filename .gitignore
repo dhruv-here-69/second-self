@@ -1,13 +1,24 @@
 # Secrets and environment variables
 .env
 
-# Raw and processed user data
-raw/
-wiki/
-data/
+# Personal user data (never push your actual notes)
+/raw/
+/wiki/
+/data/
+
+# Generated artifacts (rebuilt locally via pipeline.py)
+graph.json
+demo/data/
 
 # Python caching and virtual environments
 __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+
+# Obsidian workspace (local editor config, not project code)
+.obsidian/
+
+# OS noise
+.DS_Store
+Thumbs.db

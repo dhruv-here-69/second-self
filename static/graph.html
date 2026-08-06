@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecondSelf — Knowledge Graph</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ── Header bar ── */
+        #header {
+            background: linear-gradient(135deg, #1a1d2e 0%, #0f1117 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+        #header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #4A90D9, #27AE60);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        #stats {
+            font-size: 13px;
+            color: #888;
+        }
+
+        /* ── Legend ── */
+        #legend {
+            position: absolute;
+            top: 60px;
+            right: 16px;
+            background: rgba(26, 29, 46, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 14px 18px;
+            z-index: 10;
+            font-size: 12px;
+        }
+        #legend h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── Graph container ── */
+        #graph-container {
+            width: 100%;
+            height: calc(100vh - 50px);
+        }
+
+        /* ── Custom tooltip ── */
+        #tooltip {
+            display: none;
+            position: absolute;
+            max-width: 380px;
+            background: rgba(20, 22, 35, 0.96);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px 20px;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+        #tooltip .tt-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        #tooltip .tt-category {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        #tooltip .tt-summary {
+            font-size: 13px;
+            color: #b0b0b0;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        #tooltip .tt-tags {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        #tooltip .tt-tags span {
+            background: rgba(255,255,255,0.06);
+            padding: 2px 7px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+        #tooltip .tt-preview {
+            font-size: 12px;
+            color: #777;
+            line-height: 1.5;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 8px;
+            max-height: 80px;
+            overflow: hidden;
+        }
+
+        /* ── Empty state ── */
+        #empty-state {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            z-index: 5;
+        }
+        #empty-state h2 {
+            font-size: 22px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        #empty-state p {
+            font-size: 14px;
+        }
+
+        /* ── Pulse animation on high-degree nodes ── */
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(74, 144, 217, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(74, 144, 217, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>SecondSelf Knowledge Graph</h1>
+    <div id="stats"></div>
+</div>
+
+<div id="legend">
+    <h3>PARA Categories</h3>
+    <div class="legend-item"><div class="legend-dot" style="background:#4A90D9"></div>Projects</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#27AE60"></div>Areas</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#E67E22"></div>Resources</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#95A5A6"></div>Archives</div>
+</div>
+
+<div id="empty-state">
+    <h2>No notes yet</h2>
+    <p>Capture something, then run the pipeline to see your knowledge graph!</p>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="graph-container"></div>
+
+<script type="text/javascript">
+(function () {
+    // ── PARA color mapping ──
+    const PARA_COLORS = {
+        "Projects":  "#4A90D9",
+        "Areas":     "#27AE60",
+        "Resources": "#E67E22",
+        "Archives":  "#95A5A6"
+    };
+
+    const PARA_BG = {
+        "Projects":  "rgba(74,144,217,0.15)",
+        "Areas":     "rgba(39,174,96,0.15)",
+        "Resources": "rgba(230,126,34,0.15)",
+        "Archives":  "rgba(149,165,166,0.15)"
+    };
+
+    // ── Load graph data ──
+    // graph data can be injected via window.graphData (Streamlit) or loaded from graph.json
+    function loadGraphData() {
+        if (window.graphData) {
+            return Promise.resolve(window.graphData);
+        }
+        // Try fetching graph.json from various relative paths
+        return fetch("../graph.json")
+            .then(function (r) {
+                if (!r.ok) return fetch("graph.json");
+                return r;
+            })
+            .catch(function () { return fetch("graph.json"); })
+            .then(function (r) {
+                if (!r.ok) throw new Error("graph.json not found");
+                return r.json();
+            });
+    }
+
+    loadGraphData()
+        .then(function (data) { renderGraph(data); })
+        .catch(function (err) {
+            console.error("Failed to load graph data:", err);
+            document.getElementById("empty-state").style.display = "block";
+            document.getElementById("stats").textContent = "No graph data available";
+        });
+
+    function renderGraph(data) {
+        var graphNodes = data.nodes || [];
+        var graphEdges = data.edges || [];
+
+        // GRPH-01: Empty graph
+        if (graphNodes.length === 0) {
+            document.getElementById("empty-state").style.display = "block";
+            document.getElementById("stats").textContent = "0 nodes, 0 edges";
+            return;
+        }
+
+        document.getElementById("stats").textContent =
+            graphNodes.length + " nodes, " + graphEdges.length + " edges";
+
+        // Count connections per node for sizing
+        var connectionCount = {};
+        graphNodes.forEach(function (n) { connectionCount[n.id] = 0; });
+        graphEdges.forEach(function (e) {
+            connectionCount[e.source] = (connectionCount[e.source] || 0) + 1;
+            connectionCount[e.target] = (connectionCount[e.target] || 0) + 1;
+        });
+
+        // Build vis.js nodes
+        var visNodes = graphNodes.map(function (n) {
+            var color = PARA_COLORS[n.category] || "#95A5A6";
+            var conns = connectionCount[n.id] || 0;
+            var baseSize = 18;
+            var nodeSize = baseSize + conns * 6;
+
+            return {
+                id: n.id,
+                label: n.label || n.id,
+                size: nodeSize,
+                color: {
+                    background: color,
+                    border: color,
+                    highlight: {
+                        background: "#fff",
+                        border: color
+                    },
+                    hover: {
+                        background: color,
+                        border: "#fff"
+                    }
+                },
+                font: {
+                    color: "#ddd",
+                    size: 12 + Math.min(conns, 3),
+                    face: "Inter, Segoe UI, sans-serif",
+                    strokeWidth: 3,
+                    strokeColor: "rgba(0,0,0,0.6)"
+                },
+                borderWidth: 2,
+                borderWidthSelected: 3,
+                shadow: {
+                    enabled: true,
+                    color: color,
+                    size: 8,
+                    x: 0,
+                    y: 0
+                },
+                // Store original data for tooltip
+                _data: n
+            };
+        });
+
+        // Build vis.js edges
+        var visEdges = graphEdges.map(function (e, i) {
+            return {
+                id: "edge_" + i,
+                from: e.source,
+                to: e.target,
+                color: {
+                    color: "rgba(255,255,255,0.08)",
+                    highlight: "rgba(255,255,255,0.3)",
+                    hover: "rgba(255,255,255,0.2)"
+                },
+                width: 1.5,
+                smooth: {
+                    enabled: true,
+                    type: "continuous",
+                    roundness: 0.2
+                }
+            };
+        });
+
+        // Create datasets
+        var nodes = new vis.DataSet(visNodes);
+        var edges = new vis.DataSet(visEdges);
+
+        // Configure network
+        var container = document.getElementById("graph-container");
+        var options = {
+            nodes: {
+                shape: "dot",
+                scaling: { min: 14, max: 40 }
+            },
+            edges: {
+                selectionWidth: 2
+            },
+            physics: {
+                enabled: true,
+                solver: "forceAtlas2Based",
+                forceAtlas2Based: {
+                    gravitationalConstant: -60,
+                    centralGravity: 0.008,
+                    springLength: 160,
+                    springConstant: 0.04,
+                    damping: 0.4,
+                    avoidOverlap: 0.5
+                },
+                stabilization: {
+                    enabled: true,
+                    iterations: 200,
+                    updateInterval: 25
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100,
+                dragNodes: true,
+                dragView: true,
+                zoomView: true,
+                navigationButtons: false,
+                keyboard: false
+            },
+            layout: {
+                improvedLayout: true,
+                randomSeed: 42
+            }
+        };
+
+        var network = new vis.Network(container, { nodes: nodes, edges: edges }, options);
+
+        // Disable physics after stabilization (GRPH-05)
+        network.on("stabilizationIterationsDone", function () {
+            network.setOptions({ physics: { enabled: false } });
+        });
+
+        // ── Custom tooltip on hover ──
+        var tooltip = document.getElementById("tooltip");
+
+        network.on("hoverNode", function (params) {
+            var nodeId = params.node;
+            var nodeData = nodes.get(nodeId);
+            if (!nodeData || !nodeData._data) return;
+
+            var d = nodeData._data;
+            var catColor = PARA_COLORS[d.category] || "#95A5A6";
+            var catBg = PARA_BG[d.category] || "rgba(149,165,166,0.15)";
+
+            var html = "";
+            html += '<div class="tt-title">' + (d.label || d.id) + '</div>';
+            html += '<div class="tt-category" style="background:' + catBg + ';color:' + catColor + '">' + (d.category || "Unknown") + '</div>';
+
+            if (d.summary) {
+                html += '<div class="tt-summary">' + d.summary + '</div>';
+            }
+
+            if (d.tags && d.tags.length > 0) {
+                html += '<div class="tt-tags">';
+                d.tags.forEach(function (t) {
+                    html += '<span>' + t + '</span>';
+                });
+                html += '</div>';
+            }
+
+            if (d.content_preview) {
+                html += '<div class="tt-preview">' + d.content_preview + '</div>';
+            }
+
+            tooltip.innerHTML = html;
+            tooltip.style.display = "block";
+
+            // Position tooltip near cursor
+            var rect = container.getBoundingClientRect();
+            var canvasPos = params.event.center || { x: params.event.clientX, y: params.event.clientY };
+            var x = (canvasPos.x || params.pointer.DOM.x) + rect.left + 16;
+            var y = (canvasPos.y || params.pointer.DOM.y) + rect.top - 10;
+
+            // Keep tooltip within viewport
+            if (x + 400 > window.innerWidth) x = window.innerWidth - 400;
+            if (y + 200 > window.innerHeight) y = window.innerHeight - 220;
+            if (y < 0) y = 10;
+
+            tooltip.style.left = x + "px";
+            tooltip.style.top = y + "px";
+        });
+
+        network.on("blurNode", function () {
+            tooltip.style.display = "none";
+        });
+
+        // Also hide tooltip on drag/zoom
+        network.on("dragStart", function () { tooltip.style.display = "none"; });
+        network.on("zoom", function () { tooltip.style.display = "none"; });
+    }
+})();
+</script>
+
+</body>
+</html>

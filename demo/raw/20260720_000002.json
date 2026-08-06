@@ -1,0 +1,11 @@
+{
+  "id": "20260720_000002",
+  "captured_at": "2026-07-20T10:00:00+05:30",
+  "type": "note",
+  "content": "Retrieval-Augmented Generation (RAG) is a technique that combines retrieval models with generative LLMs to answer questions using external source data.",
+  "status": "linked",
+  "source_url": null,
+  "file_path": null,
+  "mime_type": null,
+  "metadata": {}
+}

@@ -1,0 +1,11 @@
+{
+  "id": "20260720_000003",
+  "captured_at": "2026-07-20T10:00:00+05:30",
+  "type": "note",
+  "content": "Sentence embeddings map sentences to high-dimensional vectors. We compute cosine similarity between these vectors to find semantically related text.",
+  "status": "linked",
+  "source_url": null,
+  "file_path": null,
+  "mime_type": null,
+  "metadata": {}
+}
