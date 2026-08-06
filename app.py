@@ -213,6 +213,7 @@ with st.sidebar:
                                 pipe_ok, pipe_out = run_cli_tool(["pipeline.py", "--id", capture_id])
                                 if pipe_ok:
                                     st.success(f"✅ Processing complete for {capture_id}!")
+                                    st.session_state.pipeline_running = False
                                     st.rerun()
                                 else:
                                     st.error("Pipeline run encountered errors.")
@@ -334,7 +335,7 @@ st.markdown("### 🌐 Interactive Knowledge Graph")
 if Path(GRAPH_PATH).exists():
     try:
         graph_html = render_graph_html(GRAPH_PATH, height=650)
-        st.components.v1.html(graph_html, height=650)
+        st.iframe(graph_html, height=650)
     except Exception as e:
         st.error(f"Failed to load graph visualization: {e}")
 else:
