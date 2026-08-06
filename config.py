@@ -16,6 +16,16 @@ load_dotenv(BASE_DIR / ".env")
 
 # Check GROQ_API_KEY (SETUP-01)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+# Fallback to Streamlit secrets if running in Streamlit Cloud
+if not GROQ_API_KEY:
+    try:
+        import streamlit as st
+        if "GROQ_API_KEY" in st.secrets:
+            GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+    except Exception:
+        pass
+
 # Allow missing key during pytest tests to allow mocking/running test suite
 is_testing = "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST") is not None or os.getenv("TESTING") == "true"
 if not GROQ_API_KEY and not is_testing:
